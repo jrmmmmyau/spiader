@@ -66,7 +66,7 @@ def generate_launch_description():
             'axis_linear.x': 1,
             'axis_angular.yaw': 0,
             'scale_linear.x': 1.0,
-            'scale_angular.yaw': 1.5,
+            'scale_angular.yaw': 2.5,
             'require_enable_button': False,
         }]
     )
