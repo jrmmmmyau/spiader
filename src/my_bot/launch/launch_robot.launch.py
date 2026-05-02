@@ -65,8 +65,8 @@ def generate_launch_description():
         parameters=[{
             'axis_linear.x': 1,
             'axis_angular.yaw': 0,
-            'scale_linear.x': 0.8,
-            'scale_angular.yaw': 1.0,
+            'scale_linear.x': 1.0,
+            'scale_angular.yaw': 1.5,
             'require_enable_button': False,
         }]
     )
@@ -106,6 +106,7 @@ def generate_launch_description():
         rsp,
         controller_manager,
         teleop_node,
+        joy_node,
         delayed_diff_drive_spawner,
         delayed_joint_broad_spawner,
         twist_stamper
