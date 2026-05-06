@@ -30,7 +30,7 @@ def generate_launch_description():
     )
 
     # Gazebo launch file
-    my_custom_world = '/home/jrm/dev_ws/src/my_bot/worlds/obstacles.sdf'
+    my_custom_world = '/home/jrm/spiader/src/my_bot/worlds/obstacles.sdf'
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')

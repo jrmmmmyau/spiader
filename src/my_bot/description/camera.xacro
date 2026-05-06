@@ -3,19 +3,19 @@
     <joint name="camera_joint" type="fixed">
         <parent link="chassis"/>
         <child link="camera"/>
-        <origin xyz="0.305 0 0.08" rpy="0.0 0.0 0.0"/>
+        <origin xyz="0.16 0 0.07" rpy="0.0 0.0 0.0"/>
     </joint>
 
     <link name="camera">
         <visual>
             <geometry>
-                <box size="0.01 0.03 0.03"/>
+                <box size="0.025 0.086 0.03"/>
             </geometry>
-            <material name="red"/>
+            <material name="black"/>
         </visual>
         <collision>
             <geometry>
-                <box size="0.01 0.03 0.03"/>
+                <box size="0.086 0.025 0.03"/>
             </geometry>
         </collision>
         <xacro:inertial_box mass="0.1" x="0.01" y="0.03" z="0.03">
