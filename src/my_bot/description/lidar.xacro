@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <joint name="lidar_joint" type="fixed">
+    <joint name="laser_joint" type="fixed">
         <parent link="chassis"/>
-        <child link="lidar"/>
-        <origin xyz="0 0 0.07" rpy="0.0 0.0 0.0"/>
+        <child link="laser"/>
+        <origin xyz="0 0 0.07" rpy="0.0 0.0 ${pi}"/>
     </joint>
 
-    <link name="lidar">
+    <link name="laser">
         <visual>
             <geometry>
                 <cylinder radius="0.05" length="0.04"/>
@@ -22,13 +22,13 @@
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
         </xacro:inertial_cylinder>
     </link>
-    <gazebo reference = "lidar">
+    <gazebo reference = "laser">
         <material>Gazebo/Red</material>
         <sensor name='rplidar_c1' type='gpu_lidar'>
             <pose>0 0 0 0 0 0</pose>
             <topic>scan</topic>
             <update_rate>10</update_rate>
-            <gz_frame_id>lidar</gz_frame_id>
+            <gz_frame_id>laser</gz_frame_id>
             <ray>
                 <scan>
                 <horizontal>
