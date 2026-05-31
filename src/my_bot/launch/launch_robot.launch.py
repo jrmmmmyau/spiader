@@ -76,6 +76,9 @@ def generate_launch_description():
     parameters=[
         os.path.join(get_package_share_directory('my_bot'), 'config', 'my_controllers_real.yaml')
     ],
+    remappings=[
+        ('/diff_controller/odom', '/odom'),
+    ],
     output='screen'
 )
 
