@@ -65,8 +65,8 @@ def generate_launch_description():
         parameters=[{
             'axis_linear.x': 1,
             'axis_angular.yaw': 0,
-            'scale_linear.x': 1.0,
-            'scale_angular.yaw': 1.5,
+            'scale_linear.x': 0.7,
+            'scale_angular.yaw': 6.0,
             'require_enable_button': False,
         }]
     )
