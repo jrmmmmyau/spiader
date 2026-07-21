@@ -14,12 +14,13 @@ def generate_launch_description():
 		),
 		IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'bringup_launch.py')
+                os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
             ]),
             launch_arguments={
                 'params_file': os.path.join(
                     get_package_share_directory('navigation'), 'yaml', 'nav2_params.yaml'
-                )
+                ),
+                'use_docking': 'False'
             }.items()
         ),
         IncludeLaunchDescription(
