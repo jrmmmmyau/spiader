@@ -2,6 +2,12 @@ local_costmap:
   local_costmap:
     ros__parameters:
       update_frequency: 3.0
+      publish_frequency: 2.0
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true
+      width: 3
+      height: 3
       resolution: 0.05
       footprint: "[[0.30, 0.14], [0.30, -0.14], [-0.04, -0.14], [-0.04, 0.14]]"
       plugins: ["obstacle_layer", "inflation_layer"]
@@ -21,6 +27,8 @@ global_costmap:
   global_costmap:
     ros__parameters:
       update_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_link
       resolution: 0.05
       footprint: "[[0.30, 0.14], [0.30, -0.14], [-0.04, -0.14], [-0.04, 0.14]]"
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
@@ -52,7 +60,22 @@ controller_server:
       plugin: "dwb_core::DWBLocalPlanner"
       sim_time: 1.2
       vx_samples: 15
+      vy_samples: 1
       vtheta_samples: 15
+      min_vel_x: 0.0
+      max_vel_x: 0.3
+      min_vel_y: 0.0
+      max_vel_y: 0.0
+      max_vel_theta: 1.0
+      min_speed_xy: 0.0
+      max_speed_xy: 0.3
+      min_speed_theta: 0.0
+      acc_lim_x: 0.5
+      acc_lim_y: 0.0
+      acc_lim_theta: 1.0
+      decel_lim_x: -0.5
+      decel_lim_y: 0.0
+      decel_lim_theta: -1.0
       critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
 
 collision_monitor:
@@ -80,3 +103,14 @@ collision_monitor:
       type: "scan"
       topic: "/scan"
       enabled: true
+
+docking_server:
+  ros__parameters:
+    dock_plugins: ["simple_charging_dock"]
+    simple_charging_dock:
+      plugin: "opennav_docking::SimpleChargingDock"
+    docks: ["home_dock"]
+    home_dock:
+      type: "simple_charging_dock"
+      frame: map
+      pose: [0.0, 0.0, 0.0]
