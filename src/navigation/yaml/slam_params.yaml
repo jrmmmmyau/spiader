@@ -5,3 +5,4 @@ slam_toolbox:
     map_frame: map
     use_sim_time: false
     scan_topic: /scan
+    subscriber_queue_size: 50

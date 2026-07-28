@@ -54,6 +54,7 @@ namespace my_bot{
 
     hardware_interface::CallbackReturn MyBotArduinoHardware::on_deactivate(const rclcpp_lifecycle::State & previous_state){
         try{
+	    serial_port_.Write("v 0.000 0.000\r");
             serial_port_.Close();
             return CallbackReturn::SUCCESS;
         }
@@ -108,8 +109,11 @@ namespace my_bot{
         
         std::istringstream iss(response);
         int enc_left, enc_right;
-        iss >> enc_left >> enc_right;
-
+	if (!(iss >> enc_left >> enc_right)) {
+    		RCLCPP_ERROR(rclcpp::get_logger("arduino_hw"), 
+                 "Bad encoder response: %s", response.c_str());
+    	return hardware_interface::return_type::ERROR;
+	}
         double delta_left = (enc_left - wheel_left_.enc) * (2 * M_PI / enc_counts_per_rev_);
         double delta_right = (enc_right - wheel_right_.enc) * (2 * M_PI / enc_counts_per_rev_);
 
