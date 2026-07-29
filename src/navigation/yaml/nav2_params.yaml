@@ -5,6 +5,7 @@ local_costmap:
       publish_frequency: 2.0
       track_unknown_space: false
       global_frame: odom
+      transform_tolerance: 0.5
       robot_base_frame: base_link
       rolling_window: true
       width: 3
@@ -23,6 +24,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 0.5
+        cost_scaling_factor: 1.0
 
 global_costmap:
   global_costmap:
@@ -48,6 +50,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 0.5
+        cost_scaling_factor: 1.0
 
 planner_server:
   ros__parameters:
