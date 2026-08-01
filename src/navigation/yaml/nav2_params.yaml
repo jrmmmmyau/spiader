@@ -27,8 +27,8 @@ local_costmap:
           max_obstacle_height: 1.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.1
-        cost_scaling_factor: 1.0
+        inflation_radius: 0.15
+        cost_scaling_factor: 15.0
 
 global_costmap:
   global_costmap:
@@ -57,8 +57,8 @@ global_costmap:
           max_obstacle_height: 1.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.15
-        cost_scaling_factor: 1.0
+        inflation_radius: 0.20
+        cost_scaling_factor: 20.0
 
 
 planner_server:
@@ -76,7 +76,7 @@ controller_server:
       vx_samples: 15
       vy_samples: 1
       vtheta_samples: 15
-      min_vel_x: 0.0
+      min_vel_x: -0.2
       max_vel_x: 0.3
       min_vel_y: 0.0
       max_vel_y: 0.0
