@@ -20,7 +20,8 @@ def generate_launch_description():
                 'params_file': os.path.join(
                     get_package_share_directory('navigation'), 'yaml', 'nav2_params.yaml'
                 ),
-                'use_docking': 'False'
+                'use_docking': 'False',
+                'log_level': 'warn'
             }.items()
         ),
         IncludeLaunchDescription(
