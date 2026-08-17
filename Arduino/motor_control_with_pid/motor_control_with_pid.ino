@@ -29,6 +29,9 @@ double left_velocity = 0, right_velocity = 0;
 // PID constants — start here, tune later
 const double Kp = 65.0, Ki = 50.0, Kd = 0.0;
 
+//timer
+unsigned long last_cmd_time = 0;
+
 // PID controller class
 class PIDController {
 public:
@@ -46,6 +49,10 @@ public:
     integral = constrain(integral, -100, 100);
     double derivative = (error - prev_error) / dt;
     double output = Kp * error + Ki * integral + Kd * derivative;
+    if(abs(output)<20){
+      output=0;
+    }
+    // Serial.println(output);
     prev_error = error;
     return output;
   }
@@ -139,37 +146,52 @@ void loop() {
   // Run PID at ~50 Hz (every 20 ms)
   if (dt >= 0.02) {
     last_time = now;
+    // Watchdog: free-wheel if no command for 500ms
+    if (millis() - last_cmd_time > 500) {
+        left_setpoint = 0;
+        right_setpoint = 0;
+        left_pid.reset();
+        right_pid.reset();
+        digitalWrite(AIN1, LOW);
+        digitalWrite(AIN2, LOW);
+        analogWrite(PWMA, 0);
+        digitalWrite(BIN1, LOW);
+        digitalWrite(BIN2, LOW);
+        analogWrite(PWMB, 0);
+        // Skip PID entirely
+    }
+    else{
+      // --- Compute velocities from encoder deltas ---
+      static long last_A = 0, last_B = 0;
 
-    // --- Compute velocities from encoder deltas ---
-    static long last_A = 0, last_B = 0;
+      noInterrupts();  // atomic read of volatile counters
+      long cur_A = A_pulseCount;
+      long cur_B = B_pulseCount;
+      interrupts();
 
-    noInterrupts();  // atomic read of volatile counters
-    long cur_A = A_pulseCount;
-    long cur_B = B_pulseCount;
-    interrupts();
+      long delta_A = cur_A - last_A;
+      long delta_B = cur_B - last_B;
+      last_A = cur_A;
+      last_B = cur_B;
 
-    long delta_A = cur_A - last_A;
-    long delta_B = cur_B - last_B;
-    last_A = cur_A;
-    last_B = cur_B;
+      left_velocity = -(delta_A / CPR) * 2.0 * PI / dt;
+      right_velocity = -(delta_B / CPR) * 2.0 * PI / dt;
 
-    left_velocity = -(delta_A / CPR) * 2.0 * PI / dt;
-    right_velocity = -(delta_B / CPR) * 2.0 * PI / dt;
+      // --- Compute PID outputs ---
+      double left_output = left_pid.compute(left_velocity, left_setpoint, dt);
+      double right_output = right_pid.compute(right_velocity, right_setpoint, dt);
 
-    // --- Compute PID outputs ---
-    double left_output = left_pid.compute(left_velocity, left_setpoint, dt);
-    double right_output = right_pid.compute(right_velocity, right_setpoint, dt);
-
-    // --- Apply to motors ---
-    setMotors(left_output, right_output);
-    Serial.print("vel: ");
-    Serial.print(left_velocity);
-    Serial.print(" ");
-    Serial.print(right_velocity);
-    Serial.print(" out: ");
-    Serial.print(left_output);
-    Serial.print(" ");
-    Serial.println(right_output);
+      // --- Apply to motors ---
+      setMotors(left_output, right_output);
+      // Serial.print("vel: ");
+      // Serial.print(left_velocity);
+      // Serial.print(" ");
+      // Serial.print(right_velocity);
+      // Serial.print(" out: ");
+      // Serial.print(left_output);
+      // Serial.print(" ");
+      // Serial.println(right_output);
+    }
   }
 
   // --- Handle serial commands ---
@@ -179,8 +201,12 @@ void loop() {
     if (cmd == 'v') {
       float lv = Serial.parseFloat();
       float rv = Serial.parseFloat();
+      last_cmd_time = millis();  // reset timer
+
       if (lv == 0 && rv == 0) {
         setMotors(0, 0);  // Slam brakes on zero
+        left_setpoint = 0;
+        right_setpoint = 0;
       } else {
         left_setpoint = lv;
         right_setpoint = rv;
