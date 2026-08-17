@@ -102,6 +102,7 @@ controller_server:
       PathDist.scale: 24.0
       GoalAlign.scale: 24.0
       GoalDist.scale: 24.0
+      PreferForward.penalty: 2.0
 
 collision_monitor:
   ros__parameters:
@@ -139,3 +140,8 @@ docking_server:
       type: "simple_charging_dock"
       frame: map
       pose: [0.0, 0.0, 0.0]
+
+behavior_server:
+  ros__parameters:
+    wait:
+      duration: 1
