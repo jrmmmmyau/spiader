@@ -9,7 +9,7 @@ def generate_launch_description():
     return LaunchDescription([
 		IncludeLaunchDescription(
 				PythonLaunchDescriptionSource([
-				os.path.join(get_package_share_directory('spiader_start'), 'launch', 'teleop_slam_cam.py')
+				os.path.join(get_package_share_directory('spiader_start'), 'launch', 'teleop_slam.py')
 				])
 		),
 		IncludeLaunchDescription(
