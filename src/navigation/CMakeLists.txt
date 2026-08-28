@@ -9,9 +9,11 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(nav2_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
 
 add_executable(ending_search src/ending_search.cpp)
-ament_target_dependencies(ending_search rclcpp visualization_msgs nav_msgs)
+ament_target_dependencies(ending_search rclcpp visualization_msgs nav_msgs nav2_msgs rclcpp_action)
 
 install(
   DIRECTORY yaml

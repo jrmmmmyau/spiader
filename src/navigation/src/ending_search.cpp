@@ -128,12 +128,15 @@ private:
 
         auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
 
-        send_goal_options.result_callback = 
-            [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult &result) {
-                RCLCPP_INFO(this->get_logger(), "Arrived home. Shutting down.");
-                rclcpp::shutdown();
-            };
-
+send_goal_options.result_callback = 
+    [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult &result) {
+        if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
+            RCLCPP_INFO(this->get_logger(), "Arrived home. Shutting down.");
+        } else {
+            RCLCPP_WARN(this->get_logger(), "Failed to reach home. Shutting down anyway.");
+        }
+        rclcpp::shutdown();
+    };
         nav_client_->async_send_goal(goal, send_goal_options);
         RCLCPP_INFO(this->get_logger(), "Navigating back to origin...");
     }
