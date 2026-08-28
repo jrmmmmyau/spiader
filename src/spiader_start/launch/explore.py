@@ -33,6 +33,11 @@ def generate_launch_description():
                     get_package_share_directory('navigation'), 'yaml', 'explore.yaml'
                 )
             }.items()
+        ),
+
+        Node(
+            package='navigation',
+            executable='ending_search'
         )
 
 
