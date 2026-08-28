@@ -6,6 +6,8 @@
 #include "std_msgs/msg/string.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "nav2_msgs/action/navigate_to_pose.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
 
 using namespace std;
 
@@ -25,6 +27,11 @@ public:
         [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
         this->check_odom(msg);
     }    );
+
+    nav_client_ = rclcpp_action::create_client<nav2_msgs::action::NavigateToPose>(
+    this, "navigate_to_pose");
+
+
     start_time_ = this->get_clock()->now();
     start_time_str_ = generate_timestamp();
     last_odom_time_ = start_time_;
@@ -41,6 +48,7 @@ private:
     int last_frontier_count_ = 0;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr frontiers_subscription_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
+    rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SharedPtr nav_client_;
 
 
     void check_frontiers(const visualization_msgs::msg::MarkerArray::SharedPtr msg){
@@ -53,15 +61,14 @@ private:
         } else if (count < 10) {
             if(count <= last_frontier_count_ && (this->get_clock()->now() - last_detect_time_).seconds() > 120.0) {
                 RCLCPP_INFO(this->get_logger(), "Few frontiers detected and robot is not moving. Ending search.");
-                save_map(start_time_str_ + "_final_map");
-                RCLCPP_INFO(this->get_logger(), "Map saved. Shutting down.");
+                done_searching();
                 rclcpp::shutdown();
             } 
         }
         else {
             last_detect_time_ = this->get_clock()->now();
         }
-        RCLCPP_INFO(this->get_logger(), "Frontiers detected: %d, last detected: %d", count, last_frontier_count_);
+        RCLCPP_DEBUG(this->get_logger(), "Frontiers detected: %d, last detected: %d", count, last_frontier_count_);
         last_frontier_count_ = count;
     }
 
@@ -72,16 +79,17 @@ private:
         double distance = sqrt(pow(current_pose.x - last_odom_pose_.x, 2) + pow(current_pose.y - last_odom_pose_.y, 2));
         if (distance < 0.5) { // Robot has not moved significantly, adjust the threshold as needed
             if ((this->get_clock()->now() - last_odom_time_).seconds() > 120.0) {
-                RCLCPP_INFO(this->get_logger(), "Robot has not moved for 2 minutes. Ending search.");
-                save_map(start_time_str_ + "_final_map");
-                RCLCPP_INFO(this->get_logger(), "Map saved. Shutting down.");
+                RCLCPP_INFO(this->get_logger(), "Robot has not moved for %f seconds. Ending search.", (this->get_clock()->now() - last_odom_time_).seconds());
+                done_searching();
                 rclcpp::shutdown();
             }
+            
         }
         else {
             last_odom_time_ = this->get_clock()->now();
+            last_odom_pose_ = current_pose;
         }
-        last_odom_pose_ = current_pose;
+        
     }
     
 
@@ -103,6 +111,31 @@ private:
         } else {
             RCLCPP_ERROR(this->get_logger(), "Map save failed");
         }
+    }
+
+    void done_searching(){
+        save_map(start_time_str_ + "_final_map");
+        RCLCPP_INFO(this->get_logger(), "Map saved.");
+        system("pkill -f 'explore'");
+        RCLCPP_INFO(this->get_logger(), "Exploration process terminated.");
+        //navigate home
+        auto goal = nav2_msgs::action::NavigateToPose::Goal();
+        goal.pose.header.frame_id = "map";
+        goal.pose.header.stamp = this->get_clock()->now();
+        goal.pose.pose.position.x = 0.0;
+        goal.pose.pose.position.y = 0.0;
+        goal.pose.pose.orientation.w = 1.0;
+
+        auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
+
+        send_goal_options.result_callback = 
+            [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult &result) {
+                RCLCPP_INFO(this->get_logger(), "Arrived home. Shutting down.");
+                rclcpp::shutdown();
+            };
+
+        nav_client_->async_send_goal(goal, send_goal_options);
+        RCLCPP_INFO(this->get_logger(), "Navigating back to origin...");
     }
 };
 
