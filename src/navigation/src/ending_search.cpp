@@ -58,16 +58,15 @@ private:
             save_map(start_time_str_ + "_final_map");
             RCLCPP_INFO(this->get_logger(), "Map saved. Shutting down.");
             rclcpp::shutdown();
-        } else if (count < 10) {
-            if(count <= last_frontier_count_ && (this->get_clock()->now() - last_detect_time_).seconds() > 120.0) {
+        } else if(count <= last_frontier_count_ && (this->get_clock()->now() - last_detect_time_).seconds() > 120.0) {
                 RCLCPP_INFO(this->get_logger(), "Few frontiers detected and robot is not moving. Ending search.");
                 done_searching();
                 rclcpp::shutdown();
-            } 
         }
-        else {
+        if(count != last_frontier_count_) {
             last_detect_time_ = this->get_clock()->now();
         }
+
         RCLCPP_DEBUG(this->get_logger(), "Frontiers detected: %d, last detected: %d", count, last_frontier_count_);
         last_frontier_count_ = count;
     }
@@ -115,8 +114,8 @@ private:
 
     void done_searching(){
         save_map(start_time_str_ + "_final_map");
-        RCLCPP_INFO(this->get_logger(), "Map saved.");
-        system("pkill -f 'explore'");
+        RCLCPP_INFO(this->get_logger(), "Saving map...");
+        system("pkill -f 'explore_lite'");
         RCLCPP_INFO(this->get_logger(), "Exploration process terminated.");
         //navigate home
         auto goal = nav2_msgs::action::NavigateToPose::Goal();
