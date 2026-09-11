@@ -54,6 +54,7 @@ private:
     rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SharedPtr nav_client_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr resume_pub_;
     rclcpp::TimerBase::SharedPtr pause_timer_;
+    rclcpp::TimerBase::SharedPtr nav_delay_timer_;
 
 
     void check_frontiers(const visualization_msgs::msg::MarkerArray::SharedPtr msg){
@@ -63,7 +64,6 @@ private:
             done_ = true;
             RCLCPP_INFO(this->get_logger(), "No frontiers detected. Saving map.");
             save_map(start_time_str_ + "_final_map");
-            // explore_lite handles return home, node stays alive as backup
         } else if(count <= last_frontier_count_ && (this->get_clock()->now() - last_detect_time_).seconds() > 120.0) {
             RCLCPP_INFO(this->get_logger(), "Frontiers stuck for 120s. Ending search.");
             done_searching();
@@ -105,7 +105,8 @@ private:
 
     void save_map(const std::string &filename) {
         const std::string filepath = "/home/jrm/spiader/src/navigation/maps/" + filename;
-        std::string cmd = "ros2 run nav2_map_server map_saver_cli -f " + filepath + " --ros-args -p map_subscribe_transient_local:=true";
+        std::string cmd = "ros2 run nav2_map_server map_saver_cli -f " + filepath 
+            + " --ros-args -p map_subscribe_transient_local:=true -p save_map_timeout:=10.0";
         int result = system(cmd.c_str());
         if (result == 0) {
             RCLCPP_INFO(this->get_logger(), "Map saved to %s", filepath.c_str());
@@ -134,9 +135,18 @@ private:
         pause_msg.data = false;
         resume_pub_->publish(pause_msg);
 
-        RCLCPP_INFO(this->get_logger(), "Explore paused. Navigating home...");
+        RCLCPP_INFO(this->get_logger(), "Explore paused. Waiting 3s before navigating home...");
 
-        // Navigate home
+        // Delay sending home goal by 3 seconds to let Nav2 finish aborting
+        nav_delay_timer_ = this->create_wall_timer(
+            std::chrono::seconds(3),
+            [this]() {
+                nav_delay_timer_->cancel();
+                send_home_goal();
+            });
+    }
+
+    void send_home_goal() {
         auto goal = nav2_msgs::action::NavigateToPose::Goal();
         goal.pose.header.frame_id = "map";
         goal.pose.header.stamp = this->get_clock()->now();
@@ -156,6 +166,7 @@ private:
             };
 
         nav_client_->async_send_goal(goal, send_goal_options);
+        RCLCPP_INFO(this->get_logger(), "Home goal sent.");
     }
 };
 

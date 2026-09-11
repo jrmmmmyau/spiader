@@ -6,3 +6,4 @@ slam_toolbox:
     use_sim_time: false
     scan_topic: /scan
     subscriber_queue_size: 50
+    map_update_interval: 2.0
