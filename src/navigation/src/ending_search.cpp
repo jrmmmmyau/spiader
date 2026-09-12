@@ -48,7 +48,7 @@ private:
     geometry_msgs::msg::Point last_odom_pose_;
     int last_frontier_count_ = 0;
     bool done_ = false;
-
+	int pause_count_=0;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr frontiers_subscription_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
     rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SharedPtr nav_client_;
@@ -58,14 +58,15 @@ private:
 
 
     void check_frontiers(const visualization_msgs::msg::MarkerArray::SharedPtr msg){
-        int count = msg->markers.size();
+        if(done_) return;
+	    int count = msg->markers.size();
         if (count == 0) {
             if (done_) return;
             done_ = true;
             RCLCPP_INFO(this->get_logger(), "No frontiers detected. Saving map.");
             save_map(start_time_str_ + "_final_map");
-        } else if(count <= last_frontier_count_ && (this->get_clock()->now() - last_detect_time_).seconds() > 120.0) {
-            RCLCPP_INFO(this->get_logger(), "Frontiers stuck for 120s. Ending search.");
+        } else if(count <= last_frontier_count_ && (this->get_clock()->now() - last_detect_time_).seconds() > 100.0) {
+            RCLCPP_INFO(this->get_logger(), "Frontiers stuck for 100s. Ending search.");
             done_searching();
         }
 
@@ -81,10 +82,11 @@ private:
 
 
     void check_odom(const nav_msgs::msg::Odometry::SharedPtr msg){
-        geometry_msgs::msg::Point current_pose = msg->pose.pose.position;
+        if(done_) return;
+	    geometry_msgs::msg::Point current_pose = msg->pose.pose.position;
         double distance = sqrt(pow(current_pose.x - last_odom_pose_.x, 2) + pow(current_pose.y - last_odom_pose_.y, 2));
         if (distance < 0.5) {
-            if ((this->get_clock()->now() - last_odom_time_).seconds() > 120.0) {
+            if ((this->get_clock()->now() - last_odom_time_).seconds() > 100.0) {
                 RCLCPP_INFO(this->get_logger(), "Robot stuck for %.1f seconds. Ending search.", 
                     (this->get_clock()->now() - last_odom_time_).seconds());
                 done_searching();
@@ -123,15 +125,20 @@ private:
         save_map(start_time_str_ + "_final_map");
 
         // Pause explore_lite repeatedly until shutdown
-        pause_timer_ = this->create_wall_timer(
-            std::chrono::seconds(2),
-            [this]() {
-                auto msg = std_msgs::msg::Bool();
-                msg.data = false;
-                resume_pub_->publish(msg);
-            });
-        // Send first pause immediately
-        auto pause_msg = std_msgs::msg::Bool();
+        // In done_searching, change pause_timer to stop itself after a few sends:
+
+pause_timer_ = this->create_wall_timer(
+    std::chrono::milliseconds(500),
+    [this]() {
+        auto msg = std_msgs::msg::Bool();
+        msg.data = false;
+        resume_pub_->publish(msg);
+        pause_count_++;
+        if (pause_count_ >= 4) {  // sent 4 times over 2 seconds
+            pause_timer_->cancel();
+        }
+    });
+	auto pause_msg = std_msgs::msg::Bool();
         pause_msg.data = false;
         resume_pub_->publish(pause_msg);
 
@@ -145,29 +152,43 @@ private:
                 send_home_goal();
             });
     }
+	void send_home_goal() {
+    auto goal = nav2_msgs::action::NavigateToPose::Goal();
+    goal.pose.header.frame_id = "map";
+    goal.pose.header.stamp = this->get_clock()->now();
+    goal.pose.pose.position.x = 0.0;
+    goal.pose.pose.position.y = 0.0;
+    goal.pose.pose.orientation.w = 1.0;
 
-    void send_home_goal() {
-        auto goal = nav2_msgs::action::NavigateToPose::Goal();
-        goal.pose.header.frame_id = "map";
-        goal.pose.header.stamp = this->get_clock()->now();
-        goal.pose.pose.position.x = 0.0;
-        goal.pose.pose.position.y = 0.0;
-        goal.pose.pose.orientation.w = 1.0;
+    auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
+    
+    send_goal_options.goal_response_callback = 
+        [this](auto goal_handle) {
+            if (!goal_handle) {
+                RCLCPP_ERROR(this->get_logger(), "Home goal REJECTED by server");
+            } else {
+                RCLCPP_INFO(this->get_logger(), "Home goal ACCEPTED");
+            }
+        };
 
-        auto send_goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
-        send_goal_options.result_callback = 
-            [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult &result) {
-                if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
-                    RCLCPP_INFO(this->get_logger(), "Arrived home. Shutting down.");
-                } else {
-                    RCLCPP_WARN(this->get_logger(), "Failed to reach home. Shutting down anyway.");
-                }
-                rclcpp::shutdown();
-            };
+    send_goal_options.result_callback = 
+        [this](const rclcpp_action::ClientGoalHandle<nav2_msgs::action::NavigateToPose>::WrappedResult &result) {
+            switch (result.code) {
+                case rclcpp_action::ResultCode::SUCCEEDED:
+                    RCLCPP_INFO(this->get_logger(), "Arrived home."); break;
+                case rclcpp_action::ResultCode::ABORTED:
+                    RCLCPP_WARN(this->get_logger(), "Home goal ABORTED"); break;
+                case rclcpp_action::ResultCode::CANCELED:
+                    RCLCPP_WARN(this->get_logger(), "Home goal CANCELED"); break;
+                default:
+                    RCLCPP_WARN(this->get_logger(), "Home goal unknown result"); break;
+            }
+            rclcpp::shutdown();
+        };
 
-        nav_client_->async_send_goal(goal, send_goal_options);
-        RCLCPP_INFO(this->get_logger(), "Home goal sent.");
-    }
+    nav_client_->async_send_goal(goal, send_goal_options);
+    RCLCPP_INFO(this->get_logger(), "Home goal sent.");
+}
 };
 
 int main(int argc, char * argv[]) {
