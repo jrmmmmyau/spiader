@@ -1,5 +1,6 @@
 #include "my_bot/arduino_hardware.hpp"
 #include <sstream>
+#include <iomanip>
 #include "pluginlib/class_list_macros.hpp"
 #include <cmath>
 #include <algorithm>
@@ -7,6 +8,9 @@
 #include <chrono>
 
 namespace my_bot{
+    // Free-run wheel speed, used only to clamp bad commands before they hit the serial link.
+    constexpr double MAX_VEL_RAD_S = 14;
+
     hardware_interface::CallbackReturn MyBotArduinoHardware::on_init(
         const hardware_interface::HardwareInfo & info)
     {
@@ -50,6 +54,7 @@ namespace my_bot{
 
     hardware_interface::CallbackReturn MyBotArduinoHardware::on_deactivate(const rclcpp_lifecycle::State & previous_state){
         try{
+	    serial_port_.Write("v 0.000 0.000\r");
             serial_port_.Close();
             return CallbackReturn::SUCCESS;
         }
@@ -104,8 +109,11 @@ namespace my_bot{
         
         std::istringstream iss(response);
         int enc_left, enc_right;
-        iss >> enc_left >> enc_right;
-
+	if (!(iss >> enc_left >> enc_right)) {
+    		RCLCPP_ERROR(rclcpp::get_logger("arduino_hw"), 
+                 "Bad encoder response: %s", response.c_str());
+    	return hardware_interface::return_type::ERROR;
+	}
         double delta_left = (enc_left - wheel_left_.enc) * (2 * M_PI / enc_counts_per_rev_);
         double delta_right = (enc_right - wheel_right_.enc) * (2 * M_PI / enc_counts_per_rev_);
 
@@ -122,14 +130,11 @@ namespace my_bot{
     }
 
     hardware_interface::return_type MyBotArduinoHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period){
-        double left=wheel_left_.command;
-        double right=wheel_right_.command;
-        left=left/18.64*255;
-        right=right/18.64*255;
-        left = std::clamp(left, -255.0, 255.0);
-        right = std::clamp(right, -255.0, 255.0);
+        double left = std::clamp(wheel_left_.command, -MAX_VEL_RAD_S, MAX_VEL_RAD_S);
+        double right = std::clamp(wheel_right_.command, -MAX_VEL_RAD_S, MAX_VEL_RAD_S);
+
         std::ostringstream cmd;
-        cmd << "m " << (int)left << " " << (int)right << "\r";
+        cmd << "v " << std::fixed << std::setprecision(3) << left << " " << right << "\r";
         serial_port_.Write(cmd.str());
         return hardware_interface::return_type::OK;
     }
