@@ -99,12 +99,14 @@ private:
     }
 
 
-    std::string generate_timestamp() {
-        auto now_time = std::chrono::system_clock::now();
-        auto time_t_now = std::chrono::system_clock::to_time_t(now_time);
-        return std::to_string(time_t_now);
-    }
-
+std::string generate_timestamp() {
+    auto now_time = std::chrono::system_clock::now();
+    auto time_t_now = std::chrono::system_clock::to_time_t(now_time);
+    std::tm tm_now = *std::localtime(&time_t_now);
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", &tm_now);
+    return std::string(buffer);
+}
     void save_map(const std::string &filename) {
         const std::string filepath = "/home/jrm/spiader/src/navigation/maps/" + filename;
         std::string cmd = "ros2 run nav2_map_server map_saver_cli -f " + filepath 
